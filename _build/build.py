@@ -138,10 +138,15 @@ def page(path, title, body, active=None, body_class="", description=None):
 <meta property="og:site_name" content="도안사랑교회">
 <meta property="og:title" content="{esc(full_title)}">
 <meta property="og:description" content="{esc(desc)}">
-<meta property="og:image" content="{SITE}/assets/img/site/og.jpg">
+<meta property="og:image" content="{SITE}/assets/img/site/og-logo.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="도안사랑교회 로고">
+<meta name="twitter:card" content="summary_large_image">
 <meta property="og:url" content="{SITE}{url_path}">
 <link rel="canonical" href="{SITE}{url_path}">
 <link rel="icon" href="/assets/img/site/favicon.png">
+<link rel="apple-touch-icon" href="/assets/img/site/apple-touch-icon.png">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/gowun-batang@5.3.0/400.css">
@@ -197,7 +202,7 @@ def thumb_of(post):
         return f'/assets/img/thumbs/{post["id"]}.jpg'
     if post["youtube"]:
         return f'https://img.youtube.com/vi/{post["youtube"][0]}/hqdefault.jpg'
-    return "/assets/img/site/og.jpg"
+    return "/assets/img/site/og-logo.jpg"
 
 
 def card(p):
@@ -225,7 +230,7 @@ def build_home():
     <p class="hero-church">대한예수교장로회 도안사랑교회</p>
     <h1 class="hero-title"><span>온 맘 다해 하나님을 사랑하고</span> <span>이웃을 사랑하는 교회</span></h1>
     <p class="hero-verse">“네 마음을 다하고 목숨을 다하고 뜻을 다하고 힘을 다하여 주 너의 하나님을 사랑하라” “네 이웃을 네 자신과 같이 사랑하라” <cite>마가복음 12:30~31</cite></p>
-    <p class="hero-actions"><a class="btn btn-light" href="#worship">예배시간 보기</a><a class="btn btn-ghost" href="/directions/">오시는 길</a></p>
+    <p class="hero-actions"><a class="btn btn-light" href="#worship">예배시간 보기</a><a class="btn btn-ghost" href="#visit">오시는 길</a></p>
   </div>
   <img class="hero-mark" src="/assets/img/sub/mark-white.png" alt="" aria-hidden="true">
 </section>
@@ -288,7 +293,7 @@ def build_home():
   </div>
 </section>
 
-<section class="visit" aria-labelledby="visit-title">
+<section class="visit" id="visit" aria-labelledby="visit-title">
   <div class="wrap visit-inner">
     <div class="visit-text">
       <h2 class="sec-h" id="visit-title">오시는 길</h2>
@@ -359,13 +364,28 @@ def build_album():
 
 
 def build_story():
-    s = DATA["story"]
-    rows = "".join(f'<li><span class="s-title">{esc(x["title"])}</span><span class="s-date">{esc(x["date"])}</span></li>' for x in s)
+    stories = DATA["story"]
+    rows = "".join(
+        f'<li><a href="/story/{x["id"]}/"><span class="s-title">{esc(x["title"])}</span>'
+        f'<span class="s-date">{esc(x["date"])}</span></a></li>' for x in stories)
     body = page_head("사랑이야기", 3, "/story/", "도안사랑교회 공동체의 이야기") + f"""
 <section class="wrap board">
   <ul class="story-list">{rows}</ul>
 </section>"""
     page("/story/", "사랑이야기", body, active=3, description="도안사랑교회 이야기")
+
+    for x in stories:
+        paras = "".join(f"<p>{esc(line)}</p>" for line in x["text"])
+        body = page_head("사랑이야기", 3, "/story/") + f"""
+<article class="wrap post">
+  <header class="post-head">
+    <h2>{esc(x['title'])}</h2>
+    <p class="post-meta"><span>글쓴이 도안사랑</span><time>{esc(x['date'])}</time></p>
+  </header>
+  <div class="post-body">{paras}</div>
+  <nav class="post-nav" aria-label="다른 글"><span class="prev"></span><a class="list" href="/story/">목록</a><span class="next"></span></nav>
+</article>"""
+        page(f"/story/{x['id']}/", x["title"], body, active=3, description=" ".join(x["text"])[:140])
 
 
 def build_redirects():
@@ -385,7 +405,7 @@ def build_404():
 
 
 def build_sitemap():
-    urls = ["/"] + [p["path"] for p in DATA["image_pages"]] + ["/album/", "/story/"] + [f"/album/{p['id']}/" for p in DATA["posts"]]
+    urls = ["/"] + [p["path"] for p in DATA["image_pages"]] + ["/album/", "/story/"] + [f"/story/{x['id']}/" for x in DATA["story"]] + [f"/album/{p['id']}/" for p in DATA["posts"]]
     body = "".join(f"<url><loc>{SITE}{u}</loc></url>" for u in urls)
     with open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8") as fh:
         fh.write(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{body}</urlset>\n')

@@ -28,3 +28,10 @@ python3 _build/build.py
 - 디자인: `assets/css/style.css`
 
 2026년 11월, 기존 Rhymix 홈페이지(doansarang.com)의 내용과 디자인을 옮겨 만들었습니다.
+
+## 글꼴
+
+- 제목, 성경 구절: **고운 바탕**(류양희, SIL OFL 1.1)
+- 본문, 메뉴: **Pretendard**(길형진, SIL OFL 1.1)
+
+둘 다 jsDelivr에서 필요한 글자 묶음만 불러옵니다. 상업적 사용, 웹 임베딩이 무료로 허용되며 글꼴 파일 자체를 판매하는 것만 금지됩니다.

@@ -6,7 +6,7 @@
   var openBtn = document.querySelector('.m-menu-btn');
   var closeBtn = document.querySelector('.m-close');
   var dim = document.querySelector('.m-dim');
-  function setMenu(open) { body.classList.toggle('menu-open', open); }
+  function setMenu(open) { body.classList.toggle('menu-open', open); if (openBtn) openBtn.setAttribute('aria-expanded', open ? 'true' : 'false'); }
   if (openBtn) openBtn.addEventListener('click', function () { setMenu(true); });
   if (closeBtn) closeBtn.addEventListener('click', function () { setMenu(false); });
   if (dim) dim.addEventListener('click', function () { setMenu(false); });

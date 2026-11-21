@@ -14,6 +14,7 @@ import re
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = json.load(open(os.path.join(ROOT, "_build", "content.json"), encoding="utf-8"))
 
+SITE = DATA["site_url"].rstrip("/")
 SERMON_URL = DATA["links"]["sermons"]
 JANNA_URL = DATA["links"]["janna"]
 
@@ -109,7 +110,9 @@ def page(path, title, body, active=None, body_class="", description=None):
 <meta property="og:site_name" content="도안사랑교회">
 <meta property="og:title" content="{esc(full_title)}">
 <meta property="og:description" content="{esc(desc)}">
-<meta property="og:image" content="/assets/img/site/og.jpg">
+<meta property="og:image" content="{SITE}/assets/img/site/og.jpg">
+<meta property="og:url" content="{SITE}{path}">
+<link rel="canonical" href="{SITE}{path}">
 <link rel="icon" href="/assets/img/site/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -162,17 +165,19 @@ def build_home():
     page("/", "", body, active=None, body_class="is-home")
 
 
-ADDR_Q = "%EB%8C%80%EC%A0%84%EA%B4%91%EC%97%AD%EC%8B%9C%20%EC%9C%A0%EC%84%B1%EA%B5%AC%20%EC%9B%90%EC%8B%A0%ED%9D%A5%EB%82%A8%EB%A1%9C27%EB%B2%88%EA%B8%B8%2050"
-MAP_LINKS = (f'<p class="map-links"><a class="btn" href="https://map.naver.com/p/search/{ADDR_Q}" target="_blank" rel="noopener">네이버 지도에서 보기</a>'
-             f'<a class="btn" href="https://map.kakao.com/?q={ADDR_Q}" target="_blank" rel="noopener">카카오맵에서 보기</a></p>')
-
-
 def build_image_pages():
+    """교회소개, 사랑의선교 페이지. 본문은 _build/pages/<이름>.html 에 있다."""
     for p in DATA["image_pages"]:
-        body = f"""<section class="wrap page-image">
-  <img src="/assets/img/pages/{esc(p['img'])}" alt="{esc(p['alt'])}" width="756" height="1323">
-  {MAP_LINKS if p.get('map') else ''}
-</section>"""
+        name = p["path"].strip("/")
+        with open(os.path.join(ROOT, "_build", "pages", name + ".html"), encoding="utf-8") as fh:
+            inner = fh.read()
+        sub = f'<p class="sub-tagline">{p["tagline"]}</p>' if p.get("tagline") else ""
+        body = f"""<section class="wrap sub-page sub-{esc(name)}">
+  <header class="sub-head">
+    <h2><img class="emblem" src="/assets/img/sub/emblem.png" alt="" width="106" height="100">{esc(p['heading'])}</h2>
+    {sub}
+  </header>
+{inner}</section>"""
         page(p["path"], p["title"], body, active=SECTION_OF[p["path"]], description=p["alt"][:140])
 
 
@@ -255,11 +260,25 @@ def build_404():
 </section>"""
     page("/404tmp/", "페이지를 찾을 수 없습니다", body)
     src = os.path.join(ROOT, "404tmp", "index.html")
-    os.replace(src, os.path.join(ROOT, "404.html"))
+    with open(src, encoding="utf-8") as fh:
+        doc = fh.read().replace("/404tmp/", "/404.html")
+    with open(os.path.join(ROOT, "404.html"), "w", encoding="utf-8") as fh:
+        fh.write(doc)
+    os.remove(src)
     os.rmdir(os.path.join(ROOT, "404tmp"))
 
 
+def build_sitemap():
+    urls = ["/"] + [p["path"] for p in DATA["image_pages"]] + ["/album/", "/story/"] + [f"/album/{p['id']}/" for p in DATA["posts"]]
+    body = "".join(f"<url><loc>{SITE}{u}</loc></url>" for u in urls)
+    with open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8") as fh:
+        fh.write(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{body}</urlset>\n')
+    with open(os.path.join(ROOT, "robots.txt"), "w", encoding="utf-8") as fh:
+        fh.write(f"User-agent: *\nAllow: /\nSitemap: {SITE}/sitemap.xml\n")
+
+
 if __name__ == "__main__":
+    build_sitemap()
     build_home()
     build_image_pages()
     build_album()

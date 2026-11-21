@@ -6,6 +6,7 @@ _build/content.json(글, 영상, 앨범)과 _build/pages/*.html(교회소개 본
 
     python3 _build/build.py
 """
+import datetime
 import hashlib
 import html
 import json
@@ -122,7 +123,8 @@ ANALYTICS = """<script src="https://wcs.naver.net/wcslog.js"></script>
 <script>if(!wcs_add) var wcs_add = {};wcs_add["wa"] = "%s";if(window.wcs){wcs_do();}</script>""" % DATA["naver_wa"]
 
 
-def page(path, title, body, active=None, body_class="", description=None):
+def page(path, title, body, active=None, body_class="", description=None, og=None):
+    og_src, og_w, og_h, og_alt = og or ("/assets/img/site/og-logo.jpg", 1200, 630, "도안사랑교회 로고")
     full_title = f"{title} | 도안사랑교회" if title else "도안사랑교회 | 하나님을 사랑하고 이웃을 사랑하는 교회"
     desc = description or DATA["description"]
     url_path = "/404.html" if path == "/404/" else path
@@ -138,10 +140,10 @@ def page(path, title, body, active=None, body_class="", description=None):
 <meta property="og:site_name" content="도안사랑교회">
 <meta property="og:title" content="{esc(full_title)}">
 <meta property="og:description" content="{esc(desc)}">
-<meta property="og:image" content="{SITE}/assets/img/site/og-logo.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="도안사랑교회 로고">
+<meta property="og:image" content="{SITE}{og_src}">
+<meta property="og:image:width" content="{og_w}">
+<meta property="og:image:height" content="{og_h}">
+<meta property="og:image:alt" content="{esc(og_alt)}">
 <meta name="twitter:card" content="summary_large_image">
 <meta property="og:url" content="{SITE}{url_path}">
 <link rel="canonical" href="{SITE}{url_path}">
@@ -216,6 +218,34 @@ def card(p):
 
 # ---------------------------------------------------------------- 대문
 
+def event_block():
+    """content.json의 events 중 아직 지나지 않은 행사를 대문에 보여 준다.
+    빌드한 날짜에 이미 지난 행사는 아예 빼고, 올려 둔 뒤 날짜가 지나면 브라우저에서 숨긴다."""
+    today = datetime.date.today().isoformat()
+    out = []
+    for ev in DATA.get("events", []):
+        if ev["date"] < today:
+            continue
+        rows = "".join(f'<div><dt>{esc(k)}</dt><dd>{esc(v)}</dd></div>' for k, v in
+                       [("일시", ev["when"]), ("장소", ev["place"])] + [tuple(x) for x in ev["people"]])
+        w, h = ev["poster_size"]
+        more = f'<a class="btn btn-line" href="/story/{ev["story"]}/">안내 글 보기</a>' if ev.get("story") else ""
+        out.append(f"""<section class="event" data-date="{esc(ev['date'])}" aria-labelledby="event-{esc(ev['date'])}">
+  <div class="wrap event-inner">
+    <a class="event-poster js-zoom" href="{esc(ev['poster'])}"><img src="{esc(ev['poster_small'])}" alt="{esc(ev['label'])} 「{esc(ev['title'])}」 포스터" width="{w}" height="{h}"></a>
+    <div class="event-text">
+      <p class="event-tags"><span class="event-label">{esc(ev['label'])}</span><span class="event-dday" hidden></span></p>
+      <h2 class="event-title" id="event-{esc(ev['date'])}">{esc(ev['title'])}</h2>
+      <p class="event-lead">{esc(ev['lead'])}</p>
+      <dl class="event-info">{rows}</dl>
+      <p class="btn-row"><a class="btn btn-red js-zoom" href="{esc(ev['poster'])}">포스터 크게 보기</a>{more}</p>
+    </div>
+  </div>
+</section>
+""")
+    return "".join(out)
+
+
 def build_home():
     times = "".join(
         f'<li><span class="w-name">{esc(n)}</span><span class="w-time">{esc(t)}</span>'
@@ -235,7 +265,7 @@ def build_home():
   <img class="hero-mark" src="/assets/img/sub/mark-white.png" alt="" aria-hidden="true">
 </section>
 
-<section class="worship" id="worship" aria-labelledby="worship-title">
+{event_block()}<section class="worship" id="worship" aria-labelledby="worship-title">
   <div class="wrap">
     <div class="sec-head">
       <h2 class="sec-h" id="worship-title">예배 안내</h2>
@@ -376,6 +406,10 @@ def build_story():
 
     for x in stories:
         paras = "".join(f"<p>{esc(line)}</p>" for line in x["text"])
+        imgs = "".join(f'<a class="photo" href="{esc(s)}"><img src="{esc(s)}" alt="{esc(x["title"])} 사진 {k + 1}" loading="lazy"></a>'
+                       for k, s in enumerate(x.get("images", [])))
+        if imgs:
+            paras = f'<div class="photos photos-wide">{imgs}</div>' + paras
         body = page_head("사랑이야기", 3, "/story/") + f"""
 <article class="wrap post">
   <header class="post-head">
@@ -385,7 +419,8 @@ def build_story():
   <div class="post-body">{paras}</div>
   <nav class="post-nav" aria-label="다른 글"><span class="prev"></span><a class="list" href="/story/">목록</a><span class="next"></span></nav>
 </article>"""
-        page(f"/story/{x['id']}/", x["title"], body, active=3, description=" ".join(x["text"])[:140])
+        og = (x["og_image"], 1200, 630, x["title"]) if x.get("og_image") else None
+        page(f"/story/{x['id']}/", x["title"], body, active=3, description=" ".join(x["text"])[:140], og=og)
 
 
 def build_redirects():

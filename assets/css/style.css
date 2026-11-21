@@ -224,6 +224,34 @@ cite { font-style: normal; }
 }
 .w-note { margin-top: 8px; font-size: 14px; color: var(--stone); }
 
+/* 대문 행사 알림 (content.json의 events) */
+.is-home main > section.event { padding: clamp(40px, 6vw, 72px) 0; background: var(--blush); border-bottom: 1px solid var(--rose-line); }
+.event-inner { display: grid; grid-template-columns: minmax(220px, 340px) 1fr; gap: clamp(28px, 5vw, 64px); align-items: center; }
+.event-poster { display: block; border-radius: 4px; overflow: hidden; box-shadow: 0 18px 40px -22px rgba(74, 6, 18, .55); }
+.event-poster img { display: block; width: 100%; height: auto; transition: transform .4s ease; }
+.event-poster:hover img { transform: scale(1.02); }
+.event-tags { display: flex; gap: 8px; align-items: center; }
+.event-label, .event-dday { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 14px; font-weight: 600; line-height: 1.2; }
+.event-label { background: var(--blood); color: #fff; }
+.event-dday { background: #fff; color: var(--blood); border: 1px solid var(--rose-line); font-variant-numeric: tabular-nums; }
+.event-title { margin-top: 18px; font-family: var(--serif); font-weight: 700; font-size: clamp(34px, 5vw, 56px); line-height: 1.15; color: var(--ink); text-wrap: balance; }
+.event-lead { margin-top: 14px; max-width: 30em; color: #4a4244; font-size: 17px; text-wrap: pretty; }
+.event-info { margin: 26px 0 30px; border-top: 2px solid var(--blood); }
+.event-info div { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--rose-line); }
+.event-info dt { flex: none; width: 5.5em; color: var(--blood); font-weight: 600; }
+.event-info dd { margin: 0; min-width: 0; }
+@media (max-width: 768px) {
+  .event-inner { grid-template-columns: 1fr; }
+  .event-poster { max-width: 420px; }
+  .event-info dt { width: 4.8em; }
+}
+@media (prefers-reduced-motion: reduce) { .event-poster img { transition: none; } }
+
+/* 사랑이야기 글 안의 큰 사진 */
+.photos-wide { display: block; margin-bottom: 26px; }
+.photos-wide .photo { display: block; max-width: 640px; }
+.photos-wide img { width: 100%; height: auto; display: block; border-radius: 4px; }
+
 /* 환영 인사 */
 .welcome { background: var(--blush); }
 .welcome-inner { display: grid; grid-template-columns: 280px 1fr; gap: clamp(28px, 5vw, 72px); align-items: center; }

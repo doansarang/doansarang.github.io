@@ -14,8 +14,20 @@
     btn.addEventListener('click', function () { btn.parentElement.classList.toggle('open'); });
   });
 
-  // 앨범 사진 크게 보기
+  // 대문 행사: 행사 날이 지나면 숨기고, 남은 날을 표시 (한국 시간 기준)
+  var today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+  Array.prototype.forEach.call(document.querySelectorAll('.event[data-date]'), function (ev) {
+    var d = ev.getAttribute('data-date');
+    if (d < today) { ev.parentNode.removeChild(ev); return; }
+    var left = Math.round((Date.parse(d) - Date.parse(today)) / 864e5);
+    var tag = ev.querySelector('.event-dday');
+    if (tag && left <= 30) { tag.textContent = left === 0 ? '오늘' : 'D-' + left; tag.hidden = false; }
+  });
+
+  // 사진 크게 보기 (앨범 사진, 행사 포스터)
   var photos = Array.prototype.slice.call(document.querySelectorAll('.photos .photo'));
+  var zooms = Array.prototype.slice.call(document.querySelectorAll('.js-zoom'));
+  if (!photos.length && zooms.length) photos = [zooms[0]];
   if (!photos.length) return;
   var idx = 0;
   var box = document.createElement('div');
@@ -40,6 +52,14 @@
   photos.forEach(function (a, i) {
     a.addEventListener('click', function (e) { e.preventDefault(); show(i); });
   });
+  zooms.forEach(function (a) {
+    if (photos.indexOf(a) < 0) a.addEventListener('click', function (e) { e.preventDefault(); show(0); });
+  });
+  if (photos.length < 2) {
+    box.querySelector('.lb-prev').style.display = 'none';
+    box.querySelector('.lb-next').style.display = 'none';
+    count.style.display = 'none';
+  }
   box.querySelector('.lb-prev').addEventListener('click', function (e) { e.stopPropagation(); show(idx - 1); });
   box.querySelector('.lb-next').addEventListener('click', function (e) { e.stopPropagation(); show(idx + 1); });
   box.querySelector('.lb-close').addEventListener('click', hide);

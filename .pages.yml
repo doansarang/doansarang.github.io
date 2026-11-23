@@ -1,0 +1,138 @@
+# Pages CMS(글쓰기 관리 화면) 설정
+# 관리 화면: https://app.pagescms.org
+media:
+  input: assets/img/uploads
+  output: /assets/img/uploads
+  rename: random
+  extensions: [jpg, jpeg, png, webp]
+
+content:
+  - name: story
+    label: 사랑이야기
+    type: collection
+    path: _content/story
+    filename: "{year}{month}{day}-{hour}{minute}{second}.md"
+    view:
+      fields: [title, date]
+      primary: title
+      sort: [date, title]
+      default:
+        sort: date
+        order: desc
+    fields:
+      - name: title
+        label: 제목
+        type: string
+        required: true
+      - name: date
+        label: 날짜
+        type: date
+        options:
+          format: yyyy-MM-dd
+      - name: images
+        label: 사진 (본문 위에 크게 나옵니다)
+        type: image
+        options:
+          multiple:
+            max: 20
+      - name: body
+        label: 본문 (한 줄이 한 문단이 됩니다)
+        type: text
+      - name: share_image
+        label: 카톡 공유 그림 (선택, 가로 1200×630)
+        type: image
+
+  - name: album
+    label: 선교&전도 앨범
+    type: collection
+    path: _content/album
+    filename: "{year}{month}{day}-{hour}{minute}{second}.md"
+    view:
+      fields: [title, date]
+      primary: title
+      sort: [date, title]
+      default:
+        sort: date
+        order: desc
+    fields:
+      - name: title
+        label: 제목
+        type: string
+        required: true
+      - name: date
+        label: 날짜
+        type: date
+        options:
+          format: yyyy-MM-dd
+      - name: images
+        label: 사진 (첫 사진이 목록의 대표 사진이 됩니다)
+        type: image
+        options:
+          multiple:
+            max: 40
+      - name: youtube
+        label: 유튜브 영상 주소 (선택)
+        type: string
+        list: true
+      - name: body
+        label: 본문 (한 줄이 한 문단이 됩니다)
+        type: text
+      - name: sort_date
+        label: 정렬용 (손대지 마세요)
+        type: string
+        hidden: true
+
+  - name: events
+    label: 대문 행사 알림
+    type: collection
+    path: _content/events
+    format: yaml
+    filename: "{year}{month}{day}-{hour}{minute}{second}.yml"
+    view:
+      fields: [title, date]
+      primary: title
+      default:
+        sort: date
+        order: desc
+    fields:
+      - name: label
+        label: 행사 종류 (예 특별초청예배)
+        type: string
+        required: true
+      - name: title
+        label: 행사 제목
+        type: string
+        required: true
+      - name: lead
+        label: 한두 줄 소개 (선택)
+        type: text
+      - name: date
+        label: 행사 날짜 (이 날이 지나면 대문에서 저절로 사라집니다)
+        type: date
+        options:
+          format: yyyy-MM-dd
+      - name: when
+        label: 일시 표시 (예 12월 25일(금) 오전 11시)
+        type: string
+      - name: place
+        label: 장소
+        type: string
+        default: 도안사랑교회 본당
+      - name: people
+        label: 강사, 찬양 등 (선택)
+        type: object
+        list: true
+        fields:
+          - name: role
+            label: 역할 (예 말씀)
+            type: string
+          - name: name
+            label: 이름 (예 홍길동 목사)
+            type: string
+      - name: poster
+        label: 포스터
+        type: image
+        required: true
+      - name: link
+        label: 안내 글 주소 (선택, 예 /story/20261124-101600/)
+        type: string

@@ -123,6 +123,18 @@ ANALYTICS = """<script src="https://wcs.naver.net/wcslog.js"></script>
 <script>if(!wcs_add) var wcs_add = {};wcs_add["wa"] = "%s";if(window.wcs){wcs_do();}</script>""" % DATA["naver_wa"]
 
 
+def old_url_script():
+    """예전 라이믹스 주소(?mid=..., ?document_srl=..., /게시판/글번호)를 새 페이지로 넘겨준다."""
+    pages = [p["path"].strip("/") for p in DATA["image_pages"]] + ["album", "story"]
+    posts = [str(p["id"]) for p in DATA["posts"]]
+    return ("<script>(function(){var q=new URLSearchParams(location.search),"
+            f"P={json.dumps(pages)},A={json.dumps(posts)},"
+            "d=q.get('document_srl')||(location.pathname.match(/\\/(\\d+)\\/?$/)||[])[1],m=q.get('mid'),t=null;"
+            "if(d&&A.indexOf(d)>=0)t='/album/'+d+'/';else if(m)t=P.indexOf(m)>=0?'/'+m+'/':'/';"
+            "else if(/\\.php$/.test(location.pathname))t='/';"
+            "if(t&&t!==location.pathname+location.search)location.replace(t);})();</script>")
+
+
 def page(path, title, body, active=None, body_class="", description=None, og=None):
     og_src, og_w, og_h, og_alt = og or ("/assets/img/site/og-logo.jpg", 1200, 630, "도안사랑교회 로고")
     full_title = f"{title} | 도안사랑교회" if title else "도안사랑교회 | 하나님을 사랑하고 이웃을 사랑하는 교회"
@@ -154,6 +166,7 @@ def page(path, title, body, active=None, body_class="", description=None, og=Non
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/gowun-batang@5.3.0/400.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/gowun-batang@5.3.0/700.css">
 <link rel="stylesheet" href="/assets/css/style.css?v={CSS_V}">
+{old_url_script() if path in ("/", "/404/") else ""}
 </head>
 <body class="{body_class}">
 <a class="skip" href="#content">본문 바로가기</a>

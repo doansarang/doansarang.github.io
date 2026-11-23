@@ -1,0 +1,50 @@
+# 홈페이지 자동으로 만들고 올리기
+# 관리 화면(Pages CMS)에서 글을 저장하거나 파일을 올리면 이 작업이 돌아서 1~2분 뒤 사이트에 반영된다.
+# 매일 한국시간 0시 10분에도 한 번 돌아서, 지난 행사를 대문에서 정리한다.
+name: 홈페이지 만들기
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "10 15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 준비
+        run: pip install pyyaml pillow
+      - name: 페이지 만들기
+        env:
+          TZ: Asia/Seoul
+        run: python _build/build.py
+      - name: 공개하지 않을 파일 빼기
+        run: rm -rf _build _content
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: .
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

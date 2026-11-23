@@ -207,7 +207,7 @@ def page_head(title, active, path, lead=""):
     <h1 class="page-title">{esc(title)}</h1>
     {lead_html}
   </div>
-  <img class="band-mark" src="/assets/img/sub/mark-white.png" alt="" aria-hidden="true">
+  <img class="band-mark" src="/assets/img/sub/mark-white.svg" alt="" aria-hidden="true">
 </section>
 {tabs}"""
 
@@ -275,7 +275,7 @@ def build_home():
     <p class="hero-verse">“네 마음을 다하고 목숨을 다하고 뜻을 다하고 힘을 다하여 주 너의 하나님을 사랑하라” “네 이웃을 네 자신과 같이 사랑하라” <cite>마가복음 12:30~31</cite></p>
     <p class="hero-actions"><a class="btn btn-light" href="#worship">예배시간 보기</a><a class="btn btn-ghost" href="#visit">오시는 길</a></p>
   </div>
-  <img class="hero-mark" src="/assets/img/sub/mark-white.png" alt="" aria-hidden="true">
+  <img class="hero-mark" src="/assets/img/sub/mark-white.svg" alt="" aria-hidden="true">
 </section>
 
 {event_block()}<section class="worship" id="worship" aria-labelledby="worship-title">

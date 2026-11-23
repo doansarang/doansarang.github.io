@@ -7,14 +7,139 @@ _build/content.json(글, 영상, 앨범)과 _build/pages/*.html(교회소개 본
     python3 _build/build.py
 """
 import datetime
+import glob
 import hashlib
 import html
 import json
 import os
+import re
+
+import yaml
+
+try:  # 사진 줄이기(없으면 원본을 그대로 쓴다)
+    from PIL import Image, ImageOps
+except ImportError:
+    Image = None
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = json.load(open(os.path.join(ROOT, "_build", "content.json"), encoding="utf-8"))
 SITE = DATA["site_url"].rstrip("/")
+
+
+# ---------------------------------------------------------------- 글 파일 읽기 (_content/)
+# 사랑이야기, 앨범, 행사는 글마다 한 파일이다. Pages CMS 관리 화면에서 고치면 이 파일들이 바뀐다.
+
+def _read(path):
+    raw = open(path, encoding="utf-8").read().replace("\r\n", "\n")
+    if path.endswith(".md"):
+        m = re.match(r"^---\n(.*?)\n---\n?(.*)$", raw, re.S)
+        fm, body = (m.group(1), m.group(2)) if m else ("", raw)
+    else:
+        fm, body = raw, ""
+    data = yaml.safe_load(fm) or {}
+    data["body"] = data.get("body") or body
+    return data
+
+
+def _iso(v):
+    return v.isoformat()[:10] if hasattr(v, "isoformat") else str(v or "")[:10]
+
+
+def _lines(body):
+    return [ln.strip() for ln in str(body or "").splitlines() if ln.strip()]
+
+
+def _yt_id(s):
+    s = str(s or "").strip()
+    m = re.search(r"(?:v=|youtu\.be/|embed/|shorts/|live/)([A-Za-z0-9_-]{11})", s)
+    return m.group(1) if m else (s if re.fullmatch(r"[A-Za-z0-9_-]{11}", s) else None)
+
+
+def _imgs(v):
+    if not v:
+        return []
+    v = v if isinstance(v, list) else [v]
+    return [x if str(x).startswith("/") else "/" + str(x) for x in v if x]
+
+
+def _entries(kind, pattern):
+    for path in glob.glob(os.path.join(ROOT, "_content", kind, pattern)):
+        yield os.path.splitext(os.path.basename(path))[0], _read(path)
+
+
+def load_posts():
+    posts = []
+    for pid, d in _entries("album", "*.md"):
+        date = _iso(d.get("date"))
+        posts.append({"id": pid, "title": d.get("title") or "제목 없음", "date": date.replace("-", "."),
+                      "text": _lines(d.get("body")), "images": _imgs(d.get("images")),
+                      "youtube": [y for y in map(_yt_id, d.get("youtube") or []) if y],
+                      "_sort": (_iso(d.get("sort_date")) or date, pid)})
+    return sorted(posts, key=lambda p: p["_sort"], reverse=True)
+
+
+def load_story():
+    out = []
+    for sid, d in _entries("story", "*.md"):
+        date = _iso(d.get("date"))
+        out.append({"id": sid, "title": d.get("title") or "제목 없음", "date": date.replace("-", "."),
+                     "text": _lines(d.get("body")), "images": _imgs(d.get("images")),
+                     "og_image": (_imgs(d.get("share_image")) or [None])[0], "_sort": (date, sid)})
+    return sorted(out, key=lambda x: x["_sort"], reverse=True)
+
+
+def load_events():
+    out = []
+    for eid, d in _entries("events", "*.yml"):
+        poster = (_imgs(d.get("poster")) or [None])[0]
+        if not poster or not d.get("date"):
+            continue
+        out.append({"id": eid, "label": d.get("label") or "행사", "title": d.get("title") or "",
+                    "lead": d.get("lead") or "", "date": _iso(d.get("date")), "when": d.get("when") or "",
+                    "place": d.get("place") or "", "poster": poster, "link": d.get("link") or "",
+                    "people": [(x.get("role", ""), x.get("name", "")) for x in (d.get("people") or []) if x]})
+    return sorted(out, key=lambda e: e["date"])
+
+
+# ---------------------------------------------------------------- 사진 자동 줄이기
+# 관리 화면으로 올린 사진(/assets/img/uploads/)은 휴대폰 원본이라 크다.
+# 화면용으로 줄인 사본을 /assets/img/auto/ 에 만들어 쓴다(원본은 그대로 둔다).
+
+SIZES = {"large": (1600, False), "thumb": (700, True), "poster": (720, False)}
+
+
+def resized(src, kind):
+    if not Image or not src.startswith("/assets/img/uploads/"):
+        return src
+    path = os.path.join(ROOT, src.lstrip("/"))
+    if not os.path.exists(path):
+        return src
+    name = os.path.splitext(os.path.basename(src))[0] + ".jpg"
+    rel = f"/assets/img/auto/{kind}/{name}"
+    out = os.path.join(ROOT, rel.lstrip("/"))
+    if not os.path.exists(out) or os.path.getmtime(out) < os.path.getmtime(path):
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        im = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
+        size, square = SIZES[kind]
+        if square:
+            im = ImageOps.fit(im, (size, size), Image.LANCZOS)
+        else:
+            im.thumbnail((size, size * 2), Image.LANCZOS)
+        im.save(out, "JPEG", quality=84, optimize=True, progressive=True)
+    return rel
+
+
+def image_size(src):
+    try:
+        with Image.open(os.path.join(ROOT, src.lstrip("/"))) as im:
+            return ImageOps.exif_transpose(im).size
+    except Exception:
+        return (0, 0)
+
+
+DATA["posts"] = load_posts()
+DATA["story"] = load_story()
+DATA["events"] = load_events()
 
 
 def _ver(rel):
@@ -153,9 +278,9 @@ def page(path, title, body, active=None, body_class="", description=None, og=Non
 <meta property="og:title" content="{esc(full_title)}">
 <meta property="og:description" content="{esc(desc)}">
 <meta property="og:image" content="{SITE}{og_src}">
-<meta property="og:image:width" content="{og_w}">
+{f"""<meta property="og:image:width" content="{og_w}">
 <meta property="og:image:height" content="{og_h}">
-<meta property="og:image:alt" content="{esc(og_alt)}">
+""" if og_w else ""}<meta property="og:image:alt" content="{esc(og_alt)}">
 <meta name="twitter:card" content="summary_large_image">
 <meta property="og:url" content="{SITE}{url_path}">
 <link rel="canonical" href="{SITE}{url_path}">
@@ -213,8 +338,10 @@ def page_head(title, active, path, lead=""):
 
 
 def thumb_of(post):
-    if post["images"]:
+    if os.path.exists(os.path.join(ROOT, "assets", "img", "thumbs", f'{post["id"]}.jpg')):
         return f'/assets/img/thumbs/{post["id"]}.jpg'
+    if post["images"]:
+        return resized(post["images"][0], "thumb")
     if post["youtube"]:
         return f'https://img.youtube.com/vi/{post["youtube"][0]}/hqdefault.jpg'
     return "/assets/img/site/og-logo.jpg"
@@ -240,18 +367,22 @@ def event_block():
         if ev["date"] < today:
             continue
         rows = "".join(f'<div><dt>{esc(k)}</dt><dd>{esc(v)}</dd></div>' for k, v in
-                       [("일시", ev["when"]), ("장소", ev["place"])] + [tuple(x) for x in ev["people"]])
-        w, h = ev["poster_size"]
-        more = f'<a class="btn btn-line" href="/story/{ev["story"]}/">안내 글 보기</a>' if ev.get("story") else ""
-        out.append(f"""<section class="event" data-date="{esc(ev['date'])}" aria-labelledby="event-{esc(ev['date'])}">
+                       [("일시", ev["when"]), ("장소", ev["place"])] + list(ev["people"]) if v)
+        small = ev["poster"].replace(".jpg", "-720.jpg") if os.path.exists(
+            os.path.join(ROOT, ev["poster"].replace(".jpg", "-720.jpg").lstrip("/"))) else resized(ev["poster"], "poster")
+        w, h = image_size(small) if Image else (0, 0)
+        dims = f' width="{w}" height="{h}"' if w else ""
+        more = f'<a class="btn btn-line" href="{esc(ev["link"])}">안내 글 보기</a>' if ev.get("link") else ""
+        lead = f'<p class="event-lead">{esc(ev["lead"])}</p>' if ev["lead"] else ""
+        out.append(f"""<section class="event" data-date="{esc(ev['date'])}" aria-labelledby="event-{esc(ev['id'])}">
   <div class="wrap event-inner">
-    <a class="event-poster js-zoom" href="{esc(ev['poster'])}"><img src="{esc(ev['poster_small'])}" alt="{esc(ev['label'])} 「{esc(ev['title'])}」 포스터" width="{w}" height="{h}"></a>
+    <a class="event-poster js-zoom" href="{esc(resized(ev['poster'], 'large'))}"><img src="{esc(small)}" alt="{esc(ev['label'])} 「{esc(ev['title'])}」 포스터"{dims}></a>
     <div class="event-text">
       <p class="event-tags"><span class="event-label">{esc(ev['label'])}</span><span class="event-dday" hidden></span></p>
-      <h2 class="event-title" id="event-{esc(ev['date'])}">{esc(ev['title'])}</h2>
-      <p class="event-lead">{esc(ev['lead'])}</p>
+      <h2 class="event-title" id="event-{esc(ev['id'])}">{esc(ev['title'])}</h2>
+      {lead}
       <dl class="event-info">{rows}</dl>
-      <p class="btn-row"><a class="btn btn-red js-zoom" href="{esc(ev['poster'])}">포스터 크게 보기</a>{more}</p>
+      <p class="btn-row"><a class="btn btn-red js-zoom" href="{esc(resized(ev['poster'], 'large'))}">포스터 크게 보기</a>{more}</p>
     </div>
   </div>
 </section>
@@ -381,7 +512,7 @@ def build_album():
         paras = "".join(f"<p>{esc(line)}</p>" for line in p["text"])
         vids = "".join(yt(v, p["title"]) for v in p["youtube"])
         imgs = "".join(
-            f'<a class="photo" href="/assets/img/album/{p["id"]}/{esc(f)}"><img src="/assets/img/album/{p["id"]}/{esc(f)}" '
+            f'<a class="photo" href="{esc(resized(f, "large"))}"><img src="{esc(resized(f, "large"))}" '
             f'alt="{esc(p["title"])} 사진 {k + 1}" loading="lazy"></a>'
             for k, f in enumerate(p["images"]))
         newer = posts[i - 1] if i > 0 else None
@@ -419,7 +550,7 @@ def build_story():
 
     for x in stories:
         paras = "".join(f"<p>{esc(line)}</p>" for line in x["text"])
-        imgs = "".join(f'<a class="photo" href="{esc(s)}"><img src="{esc(s)}" alt="{esc(x["title"])} 사진 {k + 1}" loading="lazy"></a>'
+        imgs = "".join(f'<a class="photo" href="{esc(resized(s, "large"))}"><img src="{esc(resized(s, "large"))}" alt="{esc(x["title"])} 사진 {k + 1}" loading="lazy"></a>'
                        for k, s in enumerate(x.get("images", [])))
         if imgs:
             paras = f'<div class="photos photos-wide">{imgs}</div>' + paras
@@ -432,7 +563,8 @@ def build_story():
   <div class="post-body">{paras}</div>
   <nav class="post-nav" aria-label="다른 글"><span class="prev"></span><a class="list" href="/story/">목록</a><span class="next"></span></nav>
 </article>"""
-        og = (x["og_image"], 1200, 630, x["title"]) if x.get("og_image") else None
+        share = x.get("og_image") or (resized(x["images"][0], "large") if x["images"] else None)
+        og = (share, *(image_size(share) if Image else (0, 0)), x["title"]) if share else None
         page(f"/story/{x['id']}/", x["title"], body, active=3, description=" ".join(x["text"])[:140], og=og)
 
 

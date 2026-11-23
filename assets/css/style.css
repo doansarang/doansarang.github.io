@@ -82,7 +82,7 @@ cite { font-style: normal; }
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(255, 255, 255, .97);
+  background: #fff;
   border-bottom: 1px solid var(--line);
 }
 .header-inner { display: flex; align-items: center; height: var(--header-h); }
